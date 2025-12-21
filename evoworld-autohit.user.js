@@ -212,37 +212,61 @@
     return { x: Math.round(x), y: Math.round(y), vis };
   };
 
-  const drawMyHitbox = (overlay, projector, getGame) => {
+  const computeScreenRect = (ent, overlay, projector, gameRef) => {
+    if (!ent?.position) return null;
+    const size = getEntitySize(ent);
+
+    const scale =
+      (gameRef?.camera && typeof gameRef.camera.zoom === 'number' && gameRef.camera.zoom) ||
+      (gameRef?.renderer && typeof gameRef.renderer.scale === 'number' && gameRef.renderer.scale) ||
+      gameRef?.zoom ||
+      1;
+    const scaleX = (gameRef?.scaleX || 1) * scale;
+    const scaleY = (gameRef?.scaleY || 1) * scale;
+
+    const centerWorld = ent.positionCenter || {
+      x: ent.position.x + size.w / 2,
+      y: ent.position.y + size.h / 2,
+    };
+
+    const centerScreen = projector(centerWorld);
+    if (!centerScreen.vis) return null;
+
+    const w = size.w * scaleX;
+    const h = size.h * scaleY;
+    return {
+      x: centerScreen.x - w / 2,
+      y: centerScreen.y - h / 2,
+      w,
+      h,
+      cx: centerScreen.x,
+      cy: centerScreen.y,
+    };
+  };
+
+  const drawEntityHitbox = (ent, overlay, projector, getGame, color) => {
     const gameRef = getGame();
     const ctx = overlay.ctx;
-    if (!ctx || !gameRef?.me?.position) return;
-    const screen = projector(gameRef.me.position);
-    if (!screen.vis) return;
-    const { w, h } = getEntitySize(gameRef.me);
-    let scale = 1;
-    try {
-      scale =
-        (gameRef?.camera && typeof gameRef.camera.zoom === 'number' && gameRef.camera.zoom) ||
-        (gameRef?.renderer && typeof gameRef.renderer.scale === 'number' && gameRef.renderer.scale) ||
-        1;
-    } catch (_e) {
-      scale = 1;
-    }
-    const drawW = w * scale;
-    const drawH = h * scale;
-    const x = screen.x - drawW / 2;
-    const y = screen.y - drawH / 2;
+    if (!ctx || !gameRef) return;
+    const rect = computeScreenRect(ent, overlay, projector, gameRef);
+    if (!rect) return;
+
     ctx.beginPath();
-    ctx.rect(x, y, drawW, drawH);
-    ctx.fillStyle = 'rgba(255,0,0,0.14)';
+    ctx.rect(rect.x, rect.y, rect.w, rect.h);
+    ctx.fillStyle = `${color}24`;
     ctx.fill();
-    ctx.lineWidth = Math.max(1, 2 * scale);
-    ctx.strokeStyle = 'rgba(255,0,0,0.95)';
+    ctx.lineWidth = Math.max(1, 2 * (gameRef?.camera?.zoom || 1));
+    ctx.strokeStyle = color;
     ctx.stroke();
-    ctx.font = `${12 * clamp(scale, 1, 3)}px Arial`;
-    ctx.fillStyle = 'rgba(255,0,0,0.95)';
-    ctx.textAlign = 'center';
-    ctx.fillText('YOU', screen.x, y - 6 * scale);
+
+    const label =
+      ent === gameRef.me ? 'YOU' : (typeof ent.level === 'number' ? `LV ${ent.level}` : '');
+    if (label) {
+      ctx.font = `${12 * clamp(gameRef?.camera?.zoom || 1, 1, 3)}px Arial`;
+      ctx.fillStyle = color;
+      ctx.textAlign = 'center';
+      ctx.fillText(label, rect.cx, rect.y - 6);
+    }
   };
 
   const createKeyboardShortcuts = (doc, settings, redraw) => {
@@ -271,7 +295,15 @@
       overlay.syncToGameCanvas();
       overlay.clear();
       if (settings.get().showHitbox) {
-        drawMyHitbox(overlay, projector, getGame);
+        const gameRef = getGame();
+        if (!gameRef?.hashMap || !gameRef.sortToDraw) return;
+        const visible = gameRef.sortToDraw(gameRef.hashMap.retrieveVisibleByClient(gameRef)) || [];
+        for (let i = 0; i < visible.length; i += 1) {
+          const ent = visible[i];
+          if (!ent || ent.deleted || !ent.position) continue;
+          if (ent.hp == null || ent.level == null) continue; // focus on player-like entities
+          drawEntityHitbox(ent, overlay, projector, getGame, ent === gameRef.me ? 'rgba(255,0,0,0.95)' : 'rgba(0,140,255,0.95)');
+        }
       }
     };
 
