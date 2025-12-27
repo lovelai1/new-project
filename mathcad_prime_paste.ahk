@@ -177,7 +177,7 @@ TypeMathcadLine_WithOperators(s)
             continue
         }
 
-        ; Subscript toggle: '_' -> Ctrl+-
+        ; Subscript toggle: '_' or '[' -> Ctrl+-
         if (ch = "_")
         {
             ReleaseMods()
@@ -185,6 +185,31 @@ TypeMathcadLine_WithOperators(s)
             inSub := true
             i += 1
             Sleep 10
+            continue
+        }
+        if (ch = "[")
+        {
+            if (!inSub)
+            {
+                ReleaseMods()
+                Send "^-"
+                inSub := true
+                Sleep 10
+            }
+            i += 1
+            continue
+        }
+
+        ; Subscript explicit exit: ']' -> move out of subscript
+        if (ch = "]")
+        {
+            if (inSub)
+            {
+                Send "{Right 2}"
+                inSub := false
+                Sleep 10
+            }
+            i += 1
             continue
         }
 
