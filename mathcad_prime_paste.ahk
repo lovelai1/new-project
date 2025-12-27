@@ -135,18 +135,16 @@ FinalizeProgramLine()
 
 RemoveAllSpacesTabs(s)
 {
-    ; Hard-ban Space/Tab from clipboard + NBSP
-    s := StrReplace(s, " ", "")
-    s := StrReplace(s, "`t", "")
+    ; Normalize whitespace: keep regular spaces, drop NBSP/zero-width, trim edges.
+    s := StrReplace(s, "`t", " ")
     s := StrReplace(s, Chr(0x00A0), "")
-    return s
+    s := RegExReplace(s, "[\x{2000}-\x{200B}\x{202F}\x{205F}\x{3000}]", "")
+    return Trim(s)
 }
 
 IsBlockedWhitespaceChar(ch)
 {
-    if (ch = " " || ch = "`t")
-        return true
-
+    ; Allow normal spaces; block NBSP/zero-width.
     cp := Ord(ch)
     if (cp = 0x00A0)
         return true
