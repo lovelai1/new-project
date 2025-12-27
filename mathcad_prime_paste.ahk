@@ -219,11 +219,11 @@ TypeMathcadLine_WithOperators(s)
             Sleep 15
         }
 
-        ; Local assignment inside Program: "<-" -> { (Prime renders ←)
+        ; Local assignment inside Program: "<-" (Prime renders ←)
         if (ch = "<" && i < StrLen(s) && SubStr(s, i+1, 1) = "-")
         {
             ReleaseMods()
-            Send "{{}"            ; physical { key (Shift+[ on US)
+            Send "<-"
             i += 2
             Sleep 10
             continue
@@ -233,7 +233,7 @@ TypeMathcadLine_WithOperators(s)
         if (ch = "←")
         {
             ReleaseMods()
-            Send "{{}"
+            Send "<-"
             i += 1
             Sleep 10
             continue
